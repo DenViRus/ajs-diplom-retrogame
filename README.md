@@ -1,5 +1,7 @@
 # AJS. Retro Game
 
+[![Build status](https://ci.appveyor.com/api/projects/status/bfdbql88wjwybdwn/branch/master?svg=true)](https://ci.appveyor.com/project/DenViRus/ajs-diplom-retrogame/branch/master)
+
 ###### tags: `netology` `advanced js`
 
 ## Концепция игры
