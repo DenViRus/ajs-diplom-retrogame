@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "test": "jest",
     "coverage": "jest --coverage",
-    "serve": "live-server ./dist"
+    "serveD": "live-server ./dist",
+    "serveS": "live-server ./src"
   },
   "repository": {
     "type": "git",

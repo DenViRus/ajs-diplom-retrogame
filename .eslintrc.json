@@ -14,6 +14,7 @@
     "no-unused-vars": "off",
     "no-mixed-operators": "off",
     "no-console": "off",
+    "no-alert": "off",
     "import/prefer-default-export": "off",
     "guard-for-in": "off",
     "no-plusplus": "off",

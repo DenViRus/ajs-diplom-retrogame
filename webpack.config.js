@@ -8,8 +8,9 @@ module.exports = {
   target: "web",
   devtool: "inline-source-map",
   output: {
+    filename: "main.js",
     path: path.resolve(__dirname, "dist"),
-    filename: "app.bundle.js",
+    assetModuleFilename: "images/[hash][ext][query]",
   },
 
   devServer: {
@@ -41,15 +42,16 @@ module.exports = {
         use: [MiniCssExtractPlugin.loader, "css-loader"],
       },
       {
-        test: /\.(png|jpg|gif|svg)$/i,
-        use: [
-          {
-            loader: "file-loader",
-            options: {
-              limit: 8192,
-            },
-          },
-        ],
+        test: /\.(png|jpg|gif|svg)$/,
+        type: "asset/resource",
+        // use: [
+        //   {
+        //     loader: "url-loader",
+        //     options: {
+        //       limit: 8192,
+        //     },
+        //   },
+        // ],
       },
     ],
   },
