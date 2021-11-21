@@ -4,7 +4,7 @@
   "description": "diplom (Advanced JS)",
   "main": "index.js",
   "scripts": {
-    "start": "webpack-dev-server --mode development",
+    "start": "webpack serve --mode development",
     "build": "webpack --mode production",
     "lint": "eslint .",
     "test": "jest",

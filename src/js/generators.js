@@ -19,4 +19,5 @@ export function generateTeam(allowedTypes, maxLevel, characterCount) {
     const character = characterGenerator(allowedTypes, maxLevel);
     team.push(character.next().value);
   }
+  return team;
 }
