@@ -10,7 +10,8 @@
     "test": "jest",
     "coverage": "jest --coverage",
     "serveD": "live-server ./dist",
-    "serveS": "live-server ./src"
+    "serveS": "live-server ./src",
+    "deploy": "gh-pages -d dist"
   },
   "repository": {
     "type": "git",
@@ -38,6 +39,7 @@
     "eslint": "^7.32.0",
     "eslint-config-airbnb-base": "^14.2.1",
     "eslint-plugin-import": "^2.25.2",
+    "gh-pages": "^3.2.3",
     "html-loader": "^3.0.1",
     "html-webpack-plugin": "^5.5.0",
     "jest": "^27.3.1",

@@ -5,6 +5,7 @@ import { generateTeam } from "./generators.js";
 import PositionedCharacter from "./PositionedCharacter.js";
 import GameState from "./GameState.js";
 import cursors from "./cursors.js";
+import GameStateService from "./GameStateService.js";
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -40,9 +41,11 @@ export default class GameController {
     this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
   }
 
-  onCellClick(index) {
+  async onCellClick(index) {
     // TODO: react to click
     this.index = index;
+    // console.log(this.stateService);
+    // console.log(JSON.parse(this.stateService.storage.state));
 
     if (!this.blockedBoard) {
       if (this.gamePlay.boardEl.style.cursor === "not-allowed") {
@@ -82,7 +85,6 @@ export default class GameController {
           ...this.enemyPositions,
         ]);
         this.currentMove = "enemy";
-        //
         this.enemyStratagy();
       } else if (
         this.selected
@@ -97,23 +99,32 @@ export default class GameController {
         this.gamePlay.setCursor(cursors.auto);
         this.selected = false;
         //
-        this.characterAttacking(this.selectedCharacter, thisAttackEnemy);
+        await this.characterAttacking(this.selectedCharacter, thisAttackEnemy);
         //
-        // if (this.enemyPositions.length > 0) {
-        //   this.getEnemyAttack(this.selectedCharacter, thisAttackEnemy);
-        // }
+        if (
+          this.enemyPositions.length > 0
+          && thisAttackEnemy.character.health > 0
+        ) {
+          this.currentMove = "enemy";
+          this.EnemyCounterAttack(thisAttackEnemy, this.selectedCharacter);
+        } else {
+          this.currentMove = "enemy";
+          this.enemyStratagy();
+        }
       }
     }
   }
 
   // атака
   async characterAttacking(attacker, target) {
+    // считаем урон
     const damage = Math.floor(
       Math.max(
         attacker.character.attack - target.character.defence,
         attacker.character.attack * 0.1,
       ),
     );
+
     await this.gamePlay.showDamage(target.position, damage);
 
     const targetedCharacter = target.character;
@@ -159,7 +170,6 @@ export default class GameController {
 
   onCellEnter(index) {
     // TODO: react to mouse enter
-
     this.index = index;
 
     const icons = {
@@ -182,14 +192,15 @@ export default class GameController {
       const characterDistance = this.selectedCharacter.character.distance;
       const characterDistanceAttack = this.selectedCharacter.character.distanceAttack;
 
-      const allowedPositions = this.getAllowedPositions(
-        characterPosition,
-        characterDistance,
-      );
-
       const allowedAttacks = this.getAllowedPositions(
         characterPosition,
         characterDistanceAttack,
+      );
+
+      const allowedPositions = this.getAllowedPositions(
+        characterPosition,
+        characterDistance,
+        true,
       );
 
       if (this.getIndex(this.userPositions) !== -1) {
@@ -238,6 +249,7 @@ export default class GameController {
 
     this.userPositions = [];
     this.enemyPositions = [];
+    this.blockedBoard = false;
     this.level = 1;
     this.points = 0;
     this.themes = themes.prairie;
@@ -280,7 +292,6 @@ export default class GameController {
 
   // переход по уровням, генерация команд, персонажей, и тем фона
   nextLevel() {
-    console.log(this.level);
     if (this.level === 1) {
       this.userTeam = new Team().getStartUserTeam();
       this.enemyTeam = generateTeam(new Team().getEnemyTeam(), 1, 2);
@@ -316,7 +327,7 @@ export default class GameController {
       this.blockedBoard = true;
       GamePlay.showMessage(`You get ${this.points} points`);
       this.newGame();
-      // return;
+      return;
     }
 
     // задаем списки возможных стартовых позиций
@@ -348,9 +359,6 @@ export default class GameController {
   }
 
   // возможные стартовые позиции игрока
-  // startUserPositions
-  // startEnemyPositions
-
   startUserPositions() {
     const positions = [];
     for (let i = 0; i < this.boardSize ** 2; i++) {
@@ -420,7 +428,7 @@ export default class GameController {
   }
 
   // вернет массив с допустимыми вариантами передвижения и атаки
-  getAllowedPositions(position, distance, isEnemy = false, another = false) {
+  getAllowedPositions(position, distance, isEnemy = false) {
     const allowedPositionsArray = [];
 
     // номер строки
@@ -453,175 +461,236 @@ export default class GameController {
       if (itemRow - i >= 0 && itemColumn + i < 8) {
         allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn + i));
       }
+      if (
+        itemRow + i + 1 < 8
+        && itemColumn + i < 8
+        && i + 1 <= distance
+        && i + 1 <= 4
+      ) {
+        allowedPositionsArray.push((itemRow + i + 1) * 8 + (itemColumn + i));
+      }
+      if (itemRow + i + 2 < 8 && itemColumn + i < 8 && i + 2 <= distance) {
+        allowedPositionsArray.push((itemRow + i + 2) * 8 + (itemColumn + i));
+      }
+      if (itemRow + i + 3 < 8 && itemColumn + i < 8 && i + 3 <= distance) {
+        allowedPositionsArray.push((itemRow + i + 3) * 8 + (itemColumn + i));
+      }
+      if (
+        itemRow + i < 8
+        && itemColumn + i + 1 < 8
+        && i + 1 <= distance
+        && i + 1 <= 4
+      ) {
+        allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn + i + 1));
+      }
+      if (itemRow + i < 8 && itemColumn + i + 2 < 8 && i + 2 <= distance) {
+        allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn + i + 2));
+      }
+      if (itemRow + i < 8 && itemColumn + i + 3 < 8 && i + 3 <= distance) {
+        allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn + i + 3));
+      }
 
-      // if (another) {
-      //   if (
-      //     itemRow + i + 1 < 8 &&
-      //     itemColumn + i < 8 &&
-      //     i + 1 <= distance &&
-      //     i + 1 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow + i + 1) * 8 + (itemColumn + i));
-      //   }
-      //   if (
-      //     itemRow + i + 2 < 8 &&
-      //     itemColumn + i < 8 &&
-      //     i + 2 <= distance &&
-      //     i + 2 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow + i + 2) * 8 + (itemColumn + i));
-      //   }
+      if (
+        itemRow - i - 1 >= 0
+        && itemColumn - i >= 0
+        && i + 1 <= distance
+        && i + 1 <= 4
+      ) {
+        allowedPositionsArray.push((itemRow - i - 1) * 8 + (itemColumn - i));
+      }
+      if (itemRow - i - 2 >= 0 && itemColumn - i >= 0 && i + 2 <= distance) {
+        allowedPositionsArray.push((itemRow - i - 2) * 8 + (itemColumn - i));
+      }
+      if (itemRow - i - 3 >= 0 && itemColumn - i >= 0 && i + 3 <= distance) {
+        allowedPositionsArray.push((itemRow - i - 3) * 8 + (itemColumn - i));
+      }
 
-      //   if (
-      //     itemRow + i < 8 &&
-      //     itemColumn + i + 1 < 8 &&
-      //     i + 1 <= distance &&
-      //     i + 1 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn + i + 1));
-      //   }
-      //   if (
-      //     itemRow + i < 8 &&
-      //     itemColumn + i + 2 < 8 &&
-      //     i + 2 <= distance &&
-      //     i + 2 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn + i + 2));
-      //   }
+      if (
+        itemRow - i >= 0
+        && itemColumn - i - 1 >= 0
+        && i + 1 <= distance
+        && i + 1 <= 4
+      ) {
+        allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn - i - 1));
+      }
+      if (itemRow - i >= 0 && itemColumn - i - 2 >= 0 && i + 2 <= distance) {
+        allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn - i - 2));
+      }
+      if (itemRow - i >= 0 && itemColumn - i - 3 >= 0 && i + 3 <= distance) {
+        allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn - i - 3));
+      }
 
-      //   if (
-      //     itemRow - i - 1 >= 0 &&
-      //     itemColumn - i >= 0 &&
-      //     i + 1 <= distance &&
-      //     i + 1 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow - i - 1) * 8 + (itemColumn - i));
-      //   }
-      //   if (
-      //     itemRow - i - 2 >= 0 &&
-      //     itemColumn - i >= 0 &&
-      //     i + 2 <= distance &&
-      //     i + 2 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow - i - 2) * 8 + (itemColumn - i));
-      //   }
+      if (
+        itemRow + i + 1 < 8
+        && itemColumn - i >= 0
+        && i + 1 <= distance
+        && i + 1 <= 4
+      ) {
+        allowedPositionsArray.push((itemRow + i + 1) * 8 + (itemColumn - i));
+      }
+      if (itemRow + i + 2 < 8 && itemColumn - i >= 0 && i + 2 <= distance) {
+        allowedPositionsArray.push((itemRow + i + 2) * 8 + (itemColumn - i));
+      }
+      if (itemRow + i + 3 < 8 && itemColumn - i >= 0 && i + 3 <= distance) {
+        allowedPositionsArray.push((itemRow + i + 3) * 8 + (itemColumn - i));
+      }
 
-      //   if (
-      //     itemRow - i >= 0 &&
-      //     itemColumn - i - 1 >= 0 &&
-      //     i + 1 <= distance &&
-      //     i + 1 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn - i - 1));
-      //   }
-      //   if (
-      //     itemRow - i >= 0 &&
-      //     itemColumn - i - 2 >= 0 &&
-      //     i + 2 <= distance &&
-      //     i + 2 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn - i - 2));
-      //   }
+      if (
+        itemRow + i < 8
+        && itemColumn - i - 1 >= 0
+        && i + 1 <= distance
+        && i + 1 <= 4
+      ) {
+        allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn - i - 1));
+      }
+      if (itemRow + i < 8 && itemColumn - i - 2 >= 0 && i + 2 <= distance) {
+        allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn - i - 2));
+      }
+      if (itemRow + i < 8 && itemColumn - i - 3 >= 0 && i + 3 <= distance) {
+        allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn - i - 3));
+      }
 
-      //   if (
-      //     itemRow + i + 1 < 8 &&
-      //     itemColumn - i >= 0 &&
-      //     i + 1 <= distance &&
-      //     i + 1 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow + i + 1) * 8 + (itemColumn - i));
-      //   }
-      //   if (
-      //     itemRow + i + 2 < 8 &&
-      //     itemColumn - i >= 0 &&
-      //     i + 2 <= distance &&
-      //     i + 2 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow + i + 2) * 8 + (itemColumn - i));
-      //   }
+      if (
+        itemRow - i - 1 >= 0
+        && itemColumn + i < 8
+        && i + 1 <= distance
+        && i + 1 <= 4
+      ) {
+        allowedPositionsArray.push((itemRow - i - 1) * 8 + (itemColumn + i));
+      }
+      if (itemRow - i - 2 >= 0 && itemColumn + i < 8 && i + 2 <= distance) {
+        allowedPositionsArray.push((itemRow - i - 2) * 8 + (itemColumn + i));
+      }
+      if (itemRow - i - 3 >= 0 && itemColumn + i < 8 && i + 3 <= distance) {
+        allowedPositionsArray.push((itemRow - i - 3) * 8 + (itemColumn + i));
+      }
 
-      //   if (
-      //     itemRow + i < 8 &&
-      //     itemColumn - i - 1 >= 0 &&
-      //     i + 1 <= distance &&
-      //     i + 1 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn - i - 1));
-      //   }
-      //   if (
-      //     itemRow + i < 8 &&
-      //     itemColumn - i - 2 >= 0 &&
-      //     i + 2 <= distance &&
-      //     i + 2 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow + i) * 8 + (itemColumn - i - 2));
-      //   }
-
-      //   if (
-      //     itemRow - i - 1 >= 0 &&
-      //     itemColumn + i < 8 &&
-      //     i + 1 <= distance &&
-      //     i + 1 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow - i - 1) * 8 + (itemColumn + i));
-      //   }
-      //   if (
-      //     itemRow - i - 2 >= 0 &&
-      //     itemColumn + i < 8 &&
-      //     i + 2 <= distance &&
-      //     i + 2 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow - i - 2) * 8 + (itemColumn + i));
-      //   }
-
-      //   if (
-      //     itemRow - i >= 0 &&
-      //     itemColumn + i + 1 < 8 &&
-      //     i + 1 <= distance &&
-      //     i + 1 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn + i + 1));
-      //   }
-      //   if (
-      //     itemRow - i >= 0 &&
-      //     itemColumn + i + 2 < 8 &&
-      //     i + 2 <= distance &&
-      //     i + 2 < 4
-      //   ) {
-      //     allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn + i + 2));
-      //   }
-      // }
+      if (
+        itemRow - i >= 0
+        && itemColumn + i + 1 < 8
+        && i + 1 <= distance
+        && i + 1 <= 4
+      ) {
+        allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn + i + 1));
+      }
+      if (itemRow - i >= 0 && itemColumn + i + 2 < 8 && i + 2 <= distance) {
+        allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn + i + 2));
+      }
+      if (itemRow - i >= 0 && itemColumn + i + 3 < 8 && i + 3 <= distance) {
+        allowedPositionsArray.push((itemRow - i) * 8 + (itemColumn + i + 3));
+      }
     }
 
-    if (isEnemy) {
+    if (isEnemy === true) {
       // если ход врага
       // позиция не должна совпадать с позицией персонажа
+
       const selectedPositions = [];
-      for (let i = 0; i < this.userPositions.length; i++) {
-        selectedPositions.push(this.userPositions[i].position);
-        selectedPositions.push(this.enemyPositions[i].position);
+      for (const item of [...this.userPositions, ...this.enemyPositions]) {
+        selectedPositions.push(item.position);
       }
+      //
       return allowedPositionsArray.filter(
         (item) => selectedPositions.indexOf(item) === -1,
       );
     }
     return allowedPositionsArray;
   }
-  // стратегия врага
 
+  // стратегия врага
   enemyStratagy() {
     if (this.currentMove === "enemy") {
-      const activeEnemy = this.enemyPositions
-        .sort((a, b) => a.character.attack - b.character.attack)
-        .reverse()[0];
-      console.log(activeEnemy);
-      // if (this.enemyPositions > 1) {
-      //   activeEnemy =
-      // }
+      // выбираем врага с самой сильной защитой врага
+      const activeEnemy = [...this.enemyPositions].sort(
+        (a, b) => a.character.attack - b.character.attack,
+      )[0];
+      // получаем возможные позиции для атаки
+      const allowedEnemyDistanceAttacks = this.getAllowedPositions(
+        activeEnemy.position,
+        activeEnemy.character.distanceAttack,
+      );
+      // выбираем рандомно новую позицию врага
+      const allowedEnemyPosition = this.getRandom(
+        this.getAllowedPositions(
+          activeEnemy.position,
+          activeEnemy.character.distance,
+          true,
+        ),
+      );
+      const attackPerspective = [];
+      // если персонаж игрока находится в области позиций для атаки
+      for (const userPosition of [...this.userPositions]) {
+        if (allowedEnemyDistanceAttacks.includes(userPosition.position)) {
+          attackPerspective.push(userPosition);
+        }
+      }
+      if (attackPerspective.length === 0) {
+        // рандомно переставляем врага
+        activeEnemy.position = allowedEnemyPosition;
+        this.gamePlay.redrawPositions([
+          ...this.userPositions,
+          ...this.enemyPositions,
+        ]);
+        this.currentMove = "user";
+      } else {
+        // или атакуем врага
+        const victim = [...attackPerspective].sort(
+          (a, b) => a.character.defence - b.character.defence,
+        )[0];
+        this.characterAttacking(activeEnemy, victim);
+      }
     }
-
-    //
   }
 
-  //
+  EnemyCounterAttack(enemy, user) {
+    if (this.currentMove === "enemy") {
+      const attackedEnemy = enemy;
+      // после атаки прсонажа получаем варианты атаки врага
+      const allowedEnemyDistanceAttacks = this.getAllowedPositions(
+        attackedEnemy.position,
+        attackedEnemy.character.distanceAttack,
+      );
+      const allowedEnemyPosition = this.getRandom(
+        this.getAllowedPositions(
+          attackedEnemy.position,
+          attackedEnemy.character.distance,
+          true,
+        ),
+      );
+      // если позиция персонажа есть среди вариантов атаки врага: контратакуем персонажа
+      if (
+        allowedEnemyDistanceAttacks.includes(user.position)
+        && attackedEnemy.character.health > 0
+        && attackedEnemy.character.defence > user.character.defence
+      ) {
+        this.characterAttacking(enemy, user);
+        if (this.userPositions.length === 0) {
+          this.blockedBoard = true;
+        }
+      } else {
+        // если не можем контратаковать
+        const attackPerspective = [];
+        for (const userPosition of [...this.userPositions]) {
+          if (allowedEnemyDistanceAttacks.includes(userPosition.position)) {
+            attackPerspective.push(userPosition);
+          }
+        }
+        if (attackPerspective.length === 0) {
+          // рандомно переставляем врага
+          attackedEnemy.position = allowedEnemyPosition;
+          this.gamePlay.redrawPositions([
+            ...this.userPositions,
+            ...this.enemyPositions,
+          ]);
+          this.currentMove = "user";
+        } else {
+          // или атакуем врага
+          const victim = [...attackPerspective].sort(
+            (a, b) => a.character.defence - b.character.defence,
+          )[0];
+          this.characterAttacking(attackedEnemy, victim);
+        }
+      }
+    }
+  }
 }

@@ -20,5 +20,6 @@
     "no-plusplus": "off",
     "quotes": "off",
     "no-underscore-dangle": "off"
+    // "prefer-destructuring": "off"
   }
 }
