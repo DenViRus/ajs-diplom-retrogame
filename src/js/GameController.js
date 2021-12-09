@@ -78,7 +78,6 @@ export default class GameController {
         this.selectedCharacter.position = index;
         this.gamePlay.deselectCell(this.selectedCharacterIndex);
         this.gamePlay.deselectCell(index);
-        this.selected = false;
 
         this.gamePlay.redrawPositions([
           ...this.userPositions,
@@ -97,7 +96,6 @@ export default class GameController {
         this.gamePlay.deselectCell(this.selectedCharacterIndex);
         this.gamePlay.deselectCell(index);
         this.gamePlay.setCursor(cursors.auto);
-        this.selected = false;
         //
         await this.characterAttacking(this.selectedCharacter, thisAttackEnemy);
         //
@@ -147,6 +145,9 @@ export default class GameController {
         (item) => item.position !== target.position,
       );
     }
+
+    this.selected = !(this.selectedCharacter.character.health <= 0);
+
     // проверяем сколько игроков осталось после атаки
     if (this.userPositions.length === 0) {
       GamePlay.showMessage("Game over!");
@@ -157,7 +158,7 @@ export default class GameController {
       this.level += 1;
       for (const userPosition of this.userPositions) {
         this.points += userPosition.character.health;
-        this.levelUp(userPosition.character);
+        userPosition.character.levelUp();
       }
       this.nextLevel();
     }
@@ -244,7 +245,7 @@ export default class GameController {
     const gameState = this.stateService.load();
     if (gameState) {
       gameState.maxPoint = maxPoint;
-      this.stateService.save(GameState.from(gameState));
+      this.stateService.save(GameState.from(this));
     }
 
     this.userPositions = [];
@@ -257,16 +258,8 @@ export default class GameController {
   }
 
   saveGame() {
-    const maxPoint = this.getMaxPoint();
-    const currentGameState = {
-      point: this.points,
-      maxPoint,
-      level: this.level,
-      currentTheme: this.themes,
-      userPositions: this.userPositions,
-      enemyPositions: this.enemyPositions,
-    };
-    this.stateService.save(GameState.from(currentGameState));
+    this.maxPoint = this.getMaxPoint();
+    this.stateService.save(GameState.from(this));
   }
 
   loadGame() {
@@ -278,6 +271,7 @@ export default class GameController {
         this.currentTheme = loadGameState.currentTheme;
         this.userPositions = loadGameState.userPositions;
         this.enemyPositions = loadGameState.enemyPositions;
+        this.blockedBoard = false;
         this.gamePlay.drawUi(this.currentTheme);
         this.gamePlay.redrawPositions([
           ...this.userPositions,
@@ -293,32 +287,32 @@ export default class GameController {
   // переход по уровням, генерация команд, персонажей, и тем фона
   nextLevel() {
     if (this.level === 1) {
-      this.userTeam = new Team().getStartUserTeam();
-      this.enemyTeam = generateTeam(new Team().getEnemyTeam(), 1, 2);
+      this.userTeam = Team.getStartUserTeam();
+      this.enemyTeam = generateTeam(Team.getEnemyTeam(), 1, 2);
       this.addPositionedCharacter(this.userTeam, this.enemyTeam);
     } else if (this.level === 2) {
       this.themes = themes.desert;
-      this.userTeam = generateTeam(new Team().getUserTeam(), 1, 1);
+      this.userTeam = generateTeam(Team.getUserTeam(), 1, 1);
       this.enemyTeam = generateTeam(
-        new Team().getEnemyTeam(),
+        Team.getEnemyTeam(),
         2,
         this.userPositions.length + this.userTeam.length,
       );
       this.addPositionedCharacter(this.userTeam, this.enemyTeam);
     } else if (this.level === 3) {
       this.themes = themes.arctic;
-      this.userTeam = generateTeam(new Team().getUserTeam(), 2, 2);
+      this.userTeam = generateTeam(Team.getUserTeam(), 2, 2);
       this.enemyTeam = generateTeam(
-        new Team().getEnemyTeam(),
+        Team.getEnemyTeam(),
         3,
         this.userPositions.length + this.userTeam.length,
       );
       this.addPositionedCharacter(this.userTeam, this.enemyTeam);
     } else if (this.level === 4) {
       this.themes = themes.mountain;
-      this.userTeam = generateTeam(new Team().getUserTeam(), 3, 2);
+      this.userTeam = generateTeam(Team.getUserTeam(), 3, 2);
       this.enemyTeam = generateTeam(
-        new Team().getEnemyTeam(),
+        Team.getEnemyTeam(),
         4,
         this.userPositions.length + this.userTeam.length,
       );
@@ -388,28 +382,6 @@ export default class GameController {
     const num = Math.floor(Math.random() * positions.length);
     const random = positions.splice(num, 1);
     return random[0];
-  }
-
-  levelUp(item) {
-    const character = item;
-    if (character.health <= 0) {
-      throw new Error("You cannot level up a deceased character");
-    } else {
-      character.level += 1;
-      character.attack = Math.floor(
-        Math.max(
-          character.attack,
-          (character.attack * (180 - character.health)) / 100,
-        ),
-      );
-      character.defence = Math.floor(
-        Math.max(
-          character.defence,
-          (character.defence * (180 - character.health)) / 100,
-        ),
-      );
-      character.health = character.health + 80 < 100 ? character.health + 80 : 100;
-    }
   }
 
   // считаем максимальное количество очков
